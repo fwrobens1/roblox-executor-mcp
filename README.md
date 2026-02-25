@@ -71,6 +71,8 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/notpoiu/roblox-execut
 | | `ignore-remote` | Ignore/unignore a remote |
 | **Screenshot** | `list-roblox-windows` | List visible Roblox windows and their PIDs |
 | | `screenshot-window` | Capture a Roblox window by PID (Windows only) |
+| **GUI Interactions** |`click-button` | Simulate a button click on a Textbutton/ImageButtton |
+| | `type-text-box` | Interact with a textbox |
 
 ## Primary / Secondary Mode
 

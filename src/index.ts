@@ -2901,6 +2901,111 @@ server.registerTool(
   }
 );
 
+server.registerTool(
+  "type-text-box",
+  {
+    title: "Type into a TextBox",
+    description: "Types text into a TextBox instance, with optional physical key press simulation.",
+    inputSchema: z.object({
+      path: z
+        .string()
+        .describe("The instance path to the TextBox"),
+      text: z
+        .string()
+        .describe("The string to type into the TextBox"),
+      enter: z
+        .boolean()
+        .describe("Whether to press Enter after typing")
+        .optional()
+        .default(false),
+      useKeyPress: z
+        .boolean()
+        .describe("If true, simulates real keystrokes using VirtualInputManager / keypress. If false, directly sets the Text property.")
+        .optional()
+        .default(true),
+      clientId: clientIdSchema,
+    }),
+  },
+  async ({ path, text, enter, useKeyPress, clientId }) => {
+    const toolCallId = SendArbitraryDataToClient(
+      "type-text-box",
+      { path, text, string: text, enter, useKeyPress },
+      undefined,
+      clientId
+    );
+
+    if (toolCallId === null) {
+      return NO_CLIENT_ERROR;
+    } else if (toolCallId === "INVALID_CLIENT") {
+      return INVALID_CLIENT_ERROR;
+    }
+
+    const response = (await GetResponseOfIdFromClient(toolCallId)) as
+      | { output: string; error?: string }
+      | undefined;
+
+    if (response === undefined || response.error !== undefined) {
+      return {
+        content: [
+          { type: "text", text: "Failed to type into TextBox. Response: " + JSON.stringify(response) },
+        ],
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: response.output || "Successfully typed into TextBox." }],
+    };
+  }
+);
+
+server.registerTool(
+  "click-button",
+  {
+    title: "Click a GuiButton",
+    description: "Simulates clicks on a TextButton or ImageButton by firing its signals via firesignal.",
+    inputSchema: z.object({
+      path: z
+        .string()
+        .describe("The instance path to the Button"),
+      action: z
+        .string()
+        .describe("The specific signal to fire (e.g., 'Activated', 'MouseButton1Click'). If omitted, fires all standard click signals.")
+        .optional(),
+      clientId: clientIdSchema,
+    }),
+  },
+  async ({ path, action, clientId }) => {
+    const toolCallId = SendArbitraryDataToClient(
+      "click-button",
+      { path, action },
+      undefined,
+      clientId
+    );
+
+    if (toolCallId === null) {
+      return NO_CLIENT_ERROR;
+    } else if (toolCallId === "INVALID_CLIENT") {
+      return INVALID_CLIENT_ERROR;
+    }
+
+    const response = (await GetResponseOfIdFromClient(toolCallId)) as
+      | { output: string; error?: string }
+      | undefined;
+
+    if (response === undefined || response.error !== undefined) {
+      return {
+        content: [
+          { type: "text", text: "Failed to click Button. Response: " + JSON.stringify(response) },
+        ],
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: response.output || "Successfully fired click signals on Button." }],
+    };
+  }
+);
+
 // ─── Start everything ───────────────────────────────────────────────────────────
 
 const transport = new StdioServerTransport();
