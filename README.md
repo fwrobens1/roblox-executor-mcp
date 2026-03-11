@@ -47,6 +47,7 @@ Run `connector.luau` in your executor, or use the quick loader:
 ```lua
 -- getgenv().BridgeURL = "10.0.0.4:16384" (defaults to localhost, change if needed)
 -- getgenv().DisableWebSocket = true
+-- getgenv().DisableInitialScriptDecompMapping = true (disables script decompilation untill you run a script related tool)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/notpoiu/roblox-executor-mcp/refs/heads/main/connector.luau"))()
 ```
 
