@@ -60,6 +60,10 @@ getgenv().DisableWebSocket = true                        -- force HTTP polling
 getgenv().DisableInitialScriptDecompMapping = true       -- skip initial decompilation
 ```
 
+## Community
+
+Have a suggestion or need help? Join the [Discord server](https://discord.gg/FJcJMuze7S).
+
 ## Security
 
 > **This server allows arbitrary code execution.** Only use with AI clients you trust. Port `16384` has no authentication — **never expose it to the internet.** For cross-machine setups, use a local network, VPN, or SSH tunnel. See [Advanced](docs/advanced.md) for details.
