@@ -24,7 +24,7 @@ do
             return re:Match(line) ~= nil
         end
     else
-        local RegExp = loadstring(game:HttpGet("https://raw.githubusercontent.com/notpoiu/LuauRegExp/refs/heads/main/dist/RegExp.readable.luau"))()
+        local RegExp = loadstring(game:HttpGet("https://raw.githubusercontent.com/notpoiu/LuauRegExp/refs/heads/main/dist/RegExp.luau"))()
         local Regexp = RegExp.Regexp
 
         function RegexEngine.compile(pattern, isLiteral, caseSensitive)
