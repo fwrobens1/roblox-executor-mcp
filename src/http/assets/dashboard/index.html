@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox MCP — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/dashboard.css">
+</head>
+<body>
+    <!-- Background layers -->
+    <div class="bg-layer bg-gradient"></div>
+    <div class="bg-layer bg-grid"></div>
+    <div class="bg-layer bg-noise"></div>
+
+
+    <div class="shell">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo-mark">M</div>
+                <div class="logo-text">Roblox <span>MCP</span></div>
+            </div>
+            <div class="header-right">
+                <div class="uptime-chip" id="uptimeChip">00:00:00</div>
+                <div class="role-chip" id="roleChip">—</div>
+            </div>
+        </header>
+
+        <!-- Connection graph -->
+        <section class="graph-section">
+            <svg class="graph-canvas" id="graphCanvas" viewBox="0 0 720 320"></svg>
+            <div class="graph-label">
+                <h1 class="graph-title" id="graphTitle">Disconnected</h1>
+                <p class="graph-sub" id="graphSub">Waiting for Roblox clients…</p>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-tile">
+                <div class="stat-tile-icon">◈</div>
+                <div class="stat-tile-value" id="statClients">0</div>
+                <div class="stat-tile-label">Clients</div>
+            </div>
+            <div class="stat-tile">
+                <div class="stat-tile-icon">⟁</div>
+                <div class="stat-tile-value" id="statRelay">0</div>
+                <div class="stat-tile-label">Relay Peers</div>
+            </div>
+        </div>
+
+        <!-- Client panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <div class="panel-title-dot"></div>
+                    Connected Clients
+                </div>
+                <div class="panel-count" id="panelCount">0</div>
+            </div>
+            <div class="panel-body" id="clientList">
+                <div class="client-empty">
+                    <div class="client-empty-icon">◌</div>
+                    No clients connected
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            Roblox MCP Server · Port {{WS_PORT}} · <a href="https://github.com/notpoiu/roblox-mcp" target="_blank" rel="noopener">GitHub</a>
+        </footer>
+    </div>
+
+    <script src="/dashboard.js"></script>
+</body>
+</html>

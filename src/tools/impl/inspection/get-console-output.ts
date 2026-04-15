@@ -1,0 +1,30 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { sendAndWait } from "../../factory.js";
+
+export default function register(server: McpServer): void {
+  server.registerTool(
+    "get-console-output",
+    {
+      title: "Get the roblox developer console output from the Roblox Game Client",
+      inputSchema: z.object({
+        limit: z
+          .number()
+          .describe("Maximum number of results to return (default: 50, to avoid overwhelming output)")
+          .optional()
+          .default(50),
+        logsOrder: z
+          .enum(["NewestFirst", "OldestFirst"])
+          .describe("The order of the logs to return (default: NewestFirst)")
+          .optional()
+          .default("NewestFirst"),
+      }),
+    },
+    async ({ limit, logsOrder }) =>
+      sendAndWait({
+        type: "get-console-output",
+        data: { limit, logsOrder },
+        failureMessage: () => "Failed to get console output.",
+      })
+  );
+}

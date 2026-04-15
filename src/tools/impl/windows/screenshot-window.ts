@@ -1,0 +1,126 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { BASE_URL } from "../../../config.js";
+import { getInstanceRole } from "../../../bridge/handlers/shared/communication.js";
+import {
+  isSupported,
+  performScreenshot,
+  type ScreenshotResult,
+} from "../../../platform/windows-screenshot.js";
+
+export default function register(server: McpServer): void {
+  server.registerTool(
+    "screenshot-window",
+    {
+      title: "Take a screenshot of a Roblox window",
+      description:
+        "Captures a screenshot of the Roblox game window using the Windows API (PrintWindow/GDI). " +
+        "Does NOT use any Lua/Roblox API — it captures the actual OS window contents. " +
+        "If multiple Roblox windows are open, specify the pid to target a specific one. " +
+        "Only works on Windows. " +
+        "If the MCP server is running as a secondary (with BASE_URL set), the screenshot request is relayed to the primary server — " +
+        "so the primary's machine (which may be a remote Windows host) performs the actual capture, even if roblox isn't running on the machine the MCP client is on.",
+      inputSchema: z.object({
+        pid: z
+          .number()
+          .describe(
+            "The PID (process ID) of the Roblox window to capture. If omitted and only one Roblox window exists, it is captured automatically. If multiple windows exist and no pid is provided, the tool returns a list of windows for disambiguation."
+          )
+          .optional(),
+      }),
+    },
+    async ({ pid }) => {
+      // Secondary mode: relay to primary via HTTP — works even if this machine isn't Windows.
+      if (getInstanceRole() === "secondary" && BASE_URL) {
+        try {
+          const targetUrl = BASE_URL.replace(/\/$/, "") + "/api/screenshot";
+          const resp = await fetch(targetUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pid }),
+          });
+          const result = (await resp.json()) as ScreenshotResult;
+          return renderScreenshotResult(result);
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Failed to relay screenshot to primary: ${(err as Error).message || err}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+
+      if (!isSupported()) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text:
+                "Error: The screenshot-window tool is only available on Windows. The current platform is: " +
+                process.platform,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      try {
+        return renderScreenshotResult(performScreenshot(pid));
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Screenshot failed: ${(err as Error).message || err}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+}
+
+function renderScreenshotResult(result: ScreenshotResult) {
+  if (result.error) {
+    return {
+      content: [{ type: "text" as const, text: result.error }],
+      isError: true,
+    };
+  }
+
+  if (result.needsDisambiguation && result.windows) {
+    const listing = result.windows.map((w) => `  • PID ${w.pid} — "${w.title}"`).join("\n");
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            "Multiple Roblox windows were found. Please re-call this tool with the `pid` parameter set to the correct process:\n\n" +
+            listing,
+        },
+      ],
+    };
+  }
+
+  if (result.imageBase64) {
+    return {
+      content: [
+        {
+          type: "image" as const,
+          data: result.imageBase64,
+          mimeType: "image/png",
+        },
+      ],
+    };
+  }
+
+  return {
+    content: [{ type: "text" as const, text: "Screenshot failed: unexpected result." }],
+    isError: true,
+  };
+}
