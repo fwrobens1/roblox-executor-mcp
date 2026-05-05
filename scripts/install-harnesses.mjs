@@ -738,7 +738,7 @@ async function selectHarnesses(initial) {
     const render = () => {
       const items = visibleItems();
       if (state.cursor >= items.length) state.cursor = Math.max(0, items.length - 1);
-      process.stdout.write("\x1b[2J\x1b[H");
+      process.stdout.write(ASCII_MODE ? "\x1b[2J\x1b[1;1H\n" : "\x1b[2J\x1b[H");
       printBanner();
       console.log(`${colors.green}${ASCII_MODE ? ">" : "◆"}${colors.reset} Which harnesses do you want to install Roblox Executor MCP into?\n`);
       console.log(`${colors.green}Selected:${colors.reset} ${formatSelection(state.selected)}\n`);
