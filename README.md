@@ -27,6 +27,10 @@ Use it to see connected Roblox clients, inspect scripts, run tools, view server 
 - **Multi-Client** — Connect multiple Roblox clients at once.
 - **Primary / Secondary** — Multiple MCP instances auto-coordinate with automatic promotion. Supports remote relaying via `--baseurl`. See [Advanced](docs/advanced.md).
 
+## Tutorial
+
+[![roblox-executor-mcp installation guide](http://img.youtube.com/vi/4YhmMYqkNzE/0.jpg)](http://www.youtube.com/watch?v=4YhmMYqkNzE)
+
 ## Prerequisites
 
 - **Node.js** ≥ 18
@@ -74,14 +78,14 @@ The update command can stop currently running MCP server processes, optionally p
 
 If you prefer to configure a client yourself, use the setup guide for your client:
 
-| Client | Guide |
-|---|---|
-| Cursor | [Setup Guide](docs/setup-cursor.md) |
+| Client         | Guide                                       |
+| -------------- | ------------------------------------------- |
+| Cursor         | [Setup Guide](docs/setup-cursor.md)         |
 | Claude Desktop | [Setup Guide](docs/setup-claude-desktop.md) |
-| Claude Code | [Setup Guide](docs/setup-claude-code.md) |
-| Codex CLI | [Setup Guide](docs/setup-codex.md) |
-| Windsurf | [Setup Guide](docs/setup-windsurf.md) |
-| Antigravity | [Setup Guide](docs/setup-antigravity.md) |
+| Claude Code    | [Setup Guide](docs/setup-claude-code.md)    |
+| Codex CLI      | [Setup Guide](docs/setup-codex.md)          |
+| Windsurf       | [Setup Guide](docs/setup-windsurf.md)       |
+| Antigravity    | [Setup Guide](docs/setup-antigravity.md)    |
 
 ### 3. Connect from Roblox
 
@@ -93,6 +97,7 @@ loadstring(game:HttpGet("http://" .. bridgeUrl .. "/script.luau"))()
 ```
 
 **Optional settings** (set before the `loadstring`):
+
 ```lua
 getgenv().BridgeURL = "10.0.0.4:16384"                  -- default: localhost:16384
 getgenv().DisableWebSocket = true                        -- force HTTP polling
