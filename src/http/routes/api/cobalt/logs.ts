@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "http";
-import { readJsonBody } from "../../body.js";
+import { readJsonBody } from "../../../body.js";
 
 interface CobaltLogEntry {
   id: string;
