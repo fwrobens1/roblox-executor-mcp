@@ -31,6 +31,7 @@ const viewServer = $('viewServer');
 const viewSettings = $('viewSettings');
 const viewServerLogs = $('viewServerLogs');
 const viewScripts = $('viewScripts');
+const viewAiChat = $('viewAiChat');
 const topbarBack = $('topbarBack');
 const sidebarNavHome = $('sidebarNavHome');
 const sidebarNavClient = $('sidebarNavClient');
@@ -111,7 +112,7 @@ function updateUptime() {
 setInterval(updateUptime, 1000);
 
 /* ── View switching ──────────────────────────────────────── */
-const allViews = () => [viewClients, viewOverview, viewTools, viewServer, viewSettings, viewServerLogs, viewScripts];
+const allViews = () => [viewClients, viewOverview, viewTools, viewServer, viewSettings, viewServerLogs, viewScripts, viewAiChat];
 
 function setSidebarMode(mode) {
     dashboardMode = mode;
@@ -127,7 +128,7 @@ function showView(name) {
         v.style.display = 'none';
         v.classList.remove('view--entering');
     });
-    const labels = {clients:'Clients',server:'Server','server-logs':'Logs',settings:'Settings',overview:'Overview',tools:'Tools',scripts:'Scripts'};
+    const labels = {clients:'Clients',server:'Server','server-logs':'Logs',settings:'Settings',overview:'Overview',tools:'Tools',scripts:'Scripts','ai-chat':'AI Chat'};
     topbarSection.textContent = labels[name] || name;
 
     let targetView = null;
@@ -141,11 +142,16 @@ function showView(name) {
         viewTools.style.display = 'block'; 
         if (!activeTool) selectTool('script-grep');
     }
-    else if (name === 'scripts') { 
+    else if (name === 'scripts') {
         targetView = viewScripts;
-        viewScripts.style.display = 'block'; 
-        fetchScripts(); 
+        viewScripts.style.display = 'block';
+        fetchScripts();
         if (scriptsData.length > 0 && !scriptsViewingFile) renderScriptsBrowser();
+    }
+    else if (name === 'ai-chat') {
+        targetView = viewAiChat;
+        viewAiChat.style.display = 'block';
+        showChatView();
     }
 
     // Only animate on actual navigation, not on re-entry to the same view
@@ -1574,6 +1580,300 @@ setInterval(() => {
     }
 }, 5000);
 
+/* ── AI Chat ─────────────────────────────────────────────── */
+let chatMessages = [];
+let chatModel = 'gemini-3.5-flash';
+let chatModelName = 'Gemini 3.5 Flash';
+let chatConfigured = false;
+let chatIsTyping = false;
+
+const chatInput = $('chatInput');
+const chatSendBtn = $('chatSendBtn');
+const chatMessagesEl = $('chatMessages');
+const chatModelBtn = $('chatModelBtn');
+const chatModelDropdown = $('chatModelDropdown');
+const chatModelLabel = $('chatModelLabel');
+const chatConfigStatus = $('chatConfigStatus');
+
+async function checkChatConfig() {
+    try {
+        const res = await fetch('/api/chat');
+        const data = await res.json();
+        chatConfigured = data.configured;
+        if (data.models) {
+            const defaultModel = data.models.find(m => m.default);
+            if (defaultModel && !chatModel) {
+                chatModel = defaultModel.id;
+                chatModelName = defaultModel.name;
+            }
+        }
+        updateChatConfigStatus();
+    } catch (e) {
+        chatConfigured = false;
+        updateChatConfigStatus();
+    }
+}
+
+function updateChatConfigStatus() {
+    if (!chatConfigStatus) return;
+    if (chatConfigured) {
+        chatConfigStatus.innerHTML = `<span class="chat-config-status--ok">●</span> Ready`;
+    } else {
+        chatConfigStatus.innerHTML = `<span class="chat-config-status--err">●</span> Set GEMINI_API_KEY env var`;
+    }
+}
+
+function autoResizeChatInput() {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(200, chatInput.scrollHeight) + 'px';
+}
+
+chatInput.addEventListener('input', autoResizeChatInput);
+
+chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+    }
+});
+
+chatSendBtn.addEventListener('click', sendChatMessage);
+
+chatModelBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    chatModelDropdown.classList.toggle('open');
+});
+
+document.addEventListener('click', (e) => {
+    if (!chatModelDropdown.contains(e.target) && !chatModelBtn.contains(e.target)) {
+        chatModelDropdown.classList.remove('open');
+    }
+});
+
+chatModelDropdown.querySelectorAll('.chat-model-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+        chatModel = opt.dataset.model;
+        chatModelName = opt.textContent;
+        chatModelLabel.textContent = chatModelName;
+        chatModelDropdown.classList.remove('open');
+        chatModelDropdown.querySelectorAll('.chat-model-option').forEach(o => {
+            o.classList.toggle('chat-model-option--active', o.dataset.model === chatModel);
+        });
+    });
+});
+
+function escapeChatHtml(str) {
+    if (!str) return '';
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(str).replace(/[&<>"']/g, m => map[m]);
+}
+
+function parseMarkdown(text) {
+    let html = escapeChatHtml(text);
+
+    // Code blocks
+    html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        return `<pre><code class="language-${lang || 'lua'}">${code.trim()}</code></pre>`;
+    });
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Headers
+    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Italic
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Lists
+    html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
+    html = html.replace(/^(<li>.*<\/li>\n?)+/gim, '<ul>$&</ul>');
+
+    // Numbered lists
+    html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+
+    // Blockquotes
+    html = html.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
+
+    // Horizontal rules
+    html = html.replace(/^---$/gim, '<hr>');
+
+    // Paragraphs (wrap lines that aren't tags)
+    const lines = html.split('\n');
+    let result = '';
+    let inBlock = false;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        if (trimmed.startsWith('<pre') || trimmed.startsWith('<ul') || trimmed.startsWith('<ol') || trimmed.startsWith('<blockquote') || trimmed.startsWith('<hr') || trimmed.startsWith('<h')) {
+            inBlock = true;
+            result += line + '\n';
+        } else if (trimmed.startsWith('</')) {
+            inBlock = false;
+            result += line + '\n';
+        } else if (inBlock) {
+            result += line + '\n';
+        } else if (trimmed) {
+            result += '<p>' + line + '</p>\n';
+        } else {
+            result += '\n';
+        }
+    }
+
+    return result;
+}
+
+function renderChatMessages() {
+    if (!chatMessagesEl) return;
+
+    if (chatMessages.length === 0) {
+        chatMessagesEl.innerHTML = `
+            <div class="chat-empty">
+                <div class="chat-empty-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z"/><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/></svg>
+                </div>
+                <div class="chat-empty-title">Roblox AI</div>
+                <div class="chat-empty-desc">Ask the AI to write scripts, analyze the game, search through code, or execute code directly in your connected Roblox client.</div>
+                <div class="chat-empty-examples">
+                    <button class="chat-empty-example" data-example="Make me a fly script with a GUI toggle button">"Make me a fly script with a GUI toggle button"</button>
+                    <button class="chat-empty-example" data-example="Search for all RemoteEvents in the game">"Search for all RemoteEvents in the game"</button>
+                    <button class="chat-empty-example" data-example="Get the current PlaceId and player count">"Get the current PlaceId and player count"</button>
+                    <button class="chat-empty-example" data-example="Find the script that handles player health">"Find the script that handles player health"</button>
+                </div>
+            </div>`;
+
+        chatMessagesEl.querySelectorAll('.chat-empty-example').forEach(btn => {
+            btn.addEventListener('click', () => {
+                chatInput.value = btn.dataset.example;
+                autoResizeChatInput();
+                chatInput.focus();
+            });
+        });
+        return;
+    }
+
+    chatMessagesEl.innerHTML = chatMessages.map((msg, idx) => {
+        if (msg.role === 'typing') {
+            return `<div class="chat-bubble chat-bubble--model">
+                <div class="chat-bubble-avatar">AI</div>
+                <div class="chat-bubble-content">
+                    <div class="chat-typing-indicator"><span></span><span></span><span></span></div>
+                </div>
+            </div>`;
+        }
+
+        const isUser = msg.role === 'user';
+        const content = isUser ? escapeChatHtml(msg.content) : parseMarkdown(msg.content);
+
+        let toolCallsHtml = '';
+        if (msg.toolCalls && msg.toolCalls.length > 0) {
+            toolCallsHtml = '<div class="chat-tool-calls">' +
+                msg.toolCalls.map(tc =>
+                    `<div class="chat-tool-call"><span class="chat-tool-call-name">${escapeChatHtml(tc.name)}</span> ${escapeChatHtml(tc.result.substring(0, 200))}${tc.result.length > 200 ? '...' : ''}</div>`
+                ).join('') +
+                '</div>';
+        }
+
+        return `<div class="chat-bubble chat-bubble--${isUser ? 'user' : 'model'}">
+            <div class="chat-bubble-avatar">${isUser ? 'You' : 'AI'}</div>
+            <div class="chat-bubble-content">${content}${toolCallsHtml}</div>
+        </div>`;
+    }).join('');
+
+    // Scroll to bottom
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+
+    // Highlight code blocks
+    if (typeof hljs !== 'undefined') {
+        chatMessagesEl.querySelectorAll('pre code').forEach(block => {
+            delete block.dataset.highlighted;
+            hljs.highlightElement(block);
+        });
+    }
+}
+
+async function sendChatMessage() {
+    if (chatIsTyping) return;
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    if (!chatConfigured) {
+        showToast('GEMINI_API_KEY is not configured. Set it as an environment variable and restart the server.', 'error');
+        return;
+    }
+
+    if (!selectedClientId) {
+        showToast('Select a client first before chatting with the AI.', 'error');
+        return;
+    }
+
+    chatMessages.push({ role: 'user', content: text });
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    chatIsTyping = true;
+    chatMessages.push({ role: 'typing' });
+    renderChatMessages();
+    chatSendBtn.disabled = true;
+
+    try {
+        const apiMessages = chatMessages
+            .filter(m => m.role === 'user' || m.role === 'model')
+            .map(m => ({ role: m.role, content: m.content }));
+
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: apiMessages,
+                clientId: selectedClientId,
+                model: chatModel,
+            }),
+        });
+
+        const data = await res.json();
+
+        // Remove typing indicator
+        chatMessages = chatMessages.filter(m => m.role !== 'typing');
+
+        if (!res.ok || data.error) {
+            chatMessages.push({
+                role: 'model',
+                content: `Error: ${data.error || 'Unknown error'}`,
+            });
+        } else {
+            chatMessages.push({
+                role: 'model',
+                content: data.reply || 'No response.',
+                toolCalls: data.toolCalls || [],
+            });
+        }
+    } catch (e) {
+        chatMessages = chatMessages.filter(m => m.role !== 'typing');
+        chatMessages.push({
+            role: 'model',
+            content: `Error: ${e.message || 'Failed to connect to AI.'}`,
+        });
+    }
+
+    chatIsTyping = false;
+    chatSendBtn.disabled = false;
+    renderChatMessages();
+}
+
+// Show chat view handling
+function showChatView() {
+    renderChatMessages();
+    checkChatConfig();
+}
+
 updateStatus();
 setSidebarMode('home');
 showView('clients');
+checkChatConfig();
