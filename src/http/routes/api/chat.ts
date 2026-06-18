@@ -45,6 +45,7 @@ Your capabilities:
 - Explore the instance hierarchy
 - Read console output
 - Get game metadata
+- Read intercepted Cobalt remote spy logs (RemoteEvent/RemoteFunction calls)
 
 When helping users:
 1. Be concise but thorough in your responses
@@ -244,6 +245,28 @@ const FUNCTION_DECLARATIONS = [
         },
       },
       required: ["query"],
+    },
+  },
+  {
+    name: "get_cobalt_logs",
+    description:
+      "Retrieve intercepted Cobalt remote spy logs. These are RemoteEvent/RemoteFunction calls captured from the game. Use this to analyze network traffic, understand server communication, or find remote names to exploit.",
+    parameters: {
+      type: "OBJECT" as const,
+      properties: {
+        limit: {
+          type: "NUMBER" as const,
+          description: "Max logs to return (default 50, max 200)",
+        },
+        direction: {
+          type: "STRING" as const,
+          description: "Filter by direction: 'incoming', 'outgoing', or 'all' (default)",
+        },
+        filter: {
+          type: "STRING" as const,
+          description: "Optional text filter for remote name or path",
+        },
+      },
     },
   },
 ];
@@ -467,6 +490,53 @@ async function callTool(
       const resp = await GetResponseOfIdFromClient(id, 120000);
       if (resp.error) return `Error: ${resp.error}`;
       return resp.output ?? "No output returned.";
+    }
+
+    if (name === "get_cobalt_logs") {
+      const limit = Math.min(Number(args.limit) || 50, 200);
+      const direction = String(args.direction || "all");
+      const filter = args.filter ? String(args.filter) : "";
+      try {
+        const params = new URLSearchParams({
+          limit: String(limit),
+          direction: direction === "all" ? "" : direction,
+          filter,
+        });
+        const res = await fetch(
+          `http://localhost:16384/api/cobalt/logs?${params.toString()}`
+        );
+        if (!res.ok) return `Error: Failed to fetch Cobalt logs (${res.status})`;
+        const data = (await res.json()) as {
+          logs: Array<{
+            remoteName: string;
+            remotePath: string;
+            direction: string;
+            args: unknown[];
+            timestamp: number;
+            generatedCode?: string;
+            debugInfo?: string;
+          }>;
+          total: number;
+        };
+        if (!data.logs || data.logs.length === 0) {
+          return "No Cobalt remote spy logs found. Install the Cobalt plugin and intercept some remotes first.";
+        }
+        const lines = data.logs.map((log, i) => {
+          const d = new Date(log.timestamp);
+          const time = d.toLocaleTimeString("en-US", { hour12: false });
+          let s = `[${i + 1}] ${time} ${log.direction.toUpperCase()} ${log.remoteName}\n  Path: ${log.remotePath}`;
+          if (log.args && log.args.length > 0) {
+            s += `\n  Args: ${JSON.stringify(log.args).slice(0, 300)}`;
+          }
+          if (log.generatedCode) {
+            s += `\n  Code:\n${log.generatedCode.slice(0, 500)}`;
+          }
+          return s;
+        });
+        return `Found ${data.logs.length} remote spy logs (total: ${data.total}):\n\n${lines.join("\n\n")}`;
+      } catch (err) {
+        return `Error fetching Cobalt logs: ${(err as Error).message || String(err)}`;
+      }
     }
 
     return `Error: Unknown tool "${name}".`;

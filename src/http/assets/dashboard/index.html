@@ -60,6 +60,7 @@
                 <button class="sidebar-item" data-view="scripts"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>Scripts</button>
                 <button class="sidebar-item" data-view="tools"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Tools</button>
                 <button class="sidebar-item" data-view="ai-chat"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z"/><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/></svg>AI Chat</button>
+                <button class="sidebar-item" data-view="cobalt-logs"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/><path d="M8 12h8"/><path d="M8 16h8"/></svg>Cobalt Logs</button>
             </nav>
             <div class="sidebar-footer">
                 <div class="sidebar-uptime">
@@ -501,6 +502,86 @@
                         <div class="chat-hint">
                             <span>AI can read scripts, execute code, search instances, and more.</span>
                             <span id="chatConfigStatus" class="chat-config-status"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cobalt Logs view -->
+            <div class="view view--cobalt" id="viewCobaltLogs" style="display:none">
+                <div class="cobalt-header">
+                    <div class="cobalt-header-left">
+                        <h2 class="cobalt-title">Cobalt Remote Spy</h2>
+                        <p class="cobalt-sub">Intercepted RemoteEvent and RemoteFunction calls</p>
+                    </div>
+                    <div class="cobalt-header-right">
+                        <div class="cobalt-stats">
+                            <span class="cobalt-stat" id="cobaltStatTotal">0 total</span>
+                            <span class="cobalt-stat" id="cobaltStatIncoming">0 incoming</span>
+                            <span class="cobalt-stat" id="cobaltStatOutgoing">0 outgoing</span>
+                        </div>
+                        <button class="logs-btn" id="cobaltClearBtn">Clear</button>
+                        <button class="logs-btn logs-btn--live" id="cobaltLiveBtn">
+                            <div class="logs-live-dot"></div>
+                            Live
+                        </button>
+                    </div>
+                </div>
+                <div class="cobalt-toolbar">
+                    <div class="cobalt-search-wrap">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        <input type="text" class="cobalt-search" id="cobaltSearch" placeholder="Filter by remote name or path..." autocomplete="off">
+                    </div>
+                    <div class="cobalt-filter-tabs">
+                        <button class="cobalt-filter-tab cobalt-filter-tab--active" data-filter="all">All</button>
+                        <button class="cobalt-filter-tab" data-filter="incoming">Incoming</button>
+                        <button class="cobalt-filter-tab" data-filter="outgoing">Outgoing</button>
+                    </div>
+                </div>
+                <div class="cobalt-table-wrap">
+                    <div class="cobalt-table-header">
+                        <div class="cobalt-col cobalt-col--time">Time</div>
+                        <div class="cobalt-col cobalt-col--dir">Dir</div>
+                        <div class="cobalt-col cobalt-col--remote">Remote</div>
+                        <div class="cobalt-col cobalt-col--args">Args</div>
+                        <div class="cobalt-col cobalt-col--actions"></div>
+                    </div>
+                    <div class="cobalt-table-body" id="cobaltTableBody">
+                        <div class="logs-empty">No remote spy logs yet. Install the Cobalt plugin to start intercepting.</div>
+                    </div>
+                </div>
+                <div class="cobalt-panel" id="cobaltPanel" style="display:none">
+                    <div class="cobalt-panel-header">
+                        <div class="cobalt-panel-title" id="cobaltPanelTitle">Remote Details</div>
+                        <button class="cobalt-panel-close" id="cobaltPanelClose">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                    <div class="cobalt-panel-body">
+                        <div class="cobalt-panel-section">
+                            <div class="cobalt-panel-label">Remote Path</div>
+                            <div class="cobalt-panel-value">
+                                <code id="cobaltPanelPath"></code>
+                                <button class="cobalt-copy-btn" data-copy-target="cobaltPanelPath">Copy</button>
+                            </div>
+                        </div>
+                        <div class="cobalt-panel-section">
+                            <div class="cobalt-panel-label">Generated Code</div>
+                            <div class="cobalt-panel-code">
+                                <pre id="cobaltPanelCode"></pre>
+                                <button class="cobalt-copy-btn" data-copy-target="cobaltPanelCode">Copy Code</button>
+                            </div>
+                        </div>
+                        <div class="cobalt-panel-section">
+                            <div class="cobalt-panel-label">Arguments</div>
+                            <div class="cobalt-panel-code">
+                                <pre id="cobaltPanelArgs"></pre>
+                                <button class="cobalt-copy-btn" data-copy-target="cobaltPanelArgs">Copy Args</button>
+                            </div>
+                        </div>
+                        <div class="cobalt-panel-section" id="cobaltPanelDebugSection" style="display:none">
+                            <div class="cobalt-panel-label">Debug Info</div>
+                            <div class="cobalt-panel-value" id="cobaltPanelDebug"></div>
                         </div>
                     </div>
                 </div>

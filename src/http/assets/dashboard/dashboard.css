@@ -1790,6 +1790,386 @@ body {
     }
 }
 
+/* ── Cobalt Logs view ────────────────────────────────────── */
+.view--cobalt {
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 48px);
+}
+
+.cobalt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg);
+}
+
+.cobalt-header-left { display: flex; flex-direction: column; gap: 2px; }
+.cobalt-title { font-size: 16px; font-weight: 600; }
+.cobalt-sub { font-size: 12px; color: var(--text-tertiary); }
+
+.cobalt-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cobalt-stats {
+    display: flex;
+    gap: 8px;
+    margin-right: 8px;
+}
+
+.cobalt-stat {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.cobalt-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg);
+}
+
+.cobalt-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 360px;
+    padding: 6px 10px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-tertiary);
+    transition: border-color var(--transition);
+}
+
+.cobalt-search-wrap:focus-within { border-color: var(--border-light); }
+
+.cobalt-search {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+}
+
+.cobalt-search::placeholder { color: var(--text-tertiary); }
+
+.cobalt-filter-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.cobalt-filter-tab {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-family: var(--sans);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.cobalt-filter-tab:hover { color: var(--text); }
+
+.cobalt-filter-tab--active {
+    background: var(--surface-raised);
+    color: var(--text);
+    font-weight: 500;
+}
+
+.cobalt-table-wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border);
+}
+
+.cobalt-table-header {
+    display: grid;
+    grid-template-columns: 120px 70px 1fr 140px 90px;
+    padding: 8px 24px;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.cobalt-table-body {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg);
+}
+
+.cobalt-table-body::-webkit-scrollbar { width: 4px; }
+.cobalt-table-body::-webkit-scrollbar-track { background: transparent; }
+.cobalt-table-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+.cobalt-row {
+    display: grid;
+    grid-template-columns: 120px 70px 1fr 140px 90px;
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    transition: background var(--transition);
+    cursor: pointer;
+    align-items: center;
+}
+
+.cobalt-row:hover { background: var(--surface-hover); }
+.cobalt-row--selected { background: var(--blue-dim) !important; }
+
+.cobalt-col--time {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+.cobalt-col--dir {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.cobalt-dir-incoming { color: var(--blue); }
+.cobalt-dir-outgoing { color: var(--green); }
+
+.cobalt-col--remote {
+    color: var(--text);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 12px;
+}
+
+.cobalt-col--args {
+    color: var(--text-secondary);
+    font-family: var(--mono);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cobalt-col--actions {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+.cobalt-row-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.cobalt-row-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+
+/* Cobalt detail panel */
+.cobalt-panel {
+    height: 260px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.cobalt-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.cobalt-panel-title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.cobalt-panel-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.cobalt-panel-close:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+
+.cobalt-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.cobalt-panel-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cobalt-panel-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+}
+
+.cobalt-panel-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+.cobalt-panel-value code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cobalt-panel-code {
+    position: relative;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.cobalt-panel-code pre {
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    padding: 10px 12px;
+    max-height: 140px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.cobalt-panel-code pre::-webkit-scrollbar { width: 4px; height: 4px; }
+.cobalt-panel-code pre::-webkit-scrollbar-track { background: transparent; }
+.cobalt-panel-code pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+.cobalt-copy-btn {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--text-secondary);
+    font-family: var(--sans);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all var(--transition);
+    flex-shrink: 0;
+}
+
+.cobalt-copy-btn:hover {
+    border-color: var(--border-light);
+    color: var(--text);
+    background: var(--surface-hover);
+}
+
+.cobalt-copy-btn--copied {
+    color: var(--green);
+    border-color: var(--green);
+}
+
+@media (max-width: 900px) {
+    .cobalt-table-header,
+    .cobalt-row {
+        grid-template-columns: 100px 60px 1fr 100px 70px;
+    }
+    .cobalt-panel-body {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 680px) {
+    .cobalt-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .cobalt-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .cobalt-table-header,
+    .cobalt-row {
+        grid-template-columns: 80px 50px 1fr 80px 60px;
+    }
+}
+
 @keyframes scaleIn {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }

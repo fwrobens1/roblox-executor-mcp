@@ -32,6 +32,7 @@ const viewSettings = $('viewSettings');
 const viewServerLogs = $('viewServerLogs');
 const viewScripts = $('viewScripts');
 const viewAiChat = $('viewAiChat');
+const viewCobaltLogs = $('viewCobaltLogs');
 const topbarBack = $('topbarBack');
 const sidebarNavHome = $('sidebarNavHome');
 const sidebarNavClient = $('sidebarNavClient');
@@ -112,7 +113,7 @@ function updateUptime() {
 setInterval(updateUptime, 1000);
 
 /* ── View switching ──────────────────────────────────────── */
-const allViews = () => [viewClients, viewOverview, viewTools, viewServer, viewSettings, viewServerLogs, viewScripts, viewAiChat];
+const allViews = () => [viewClients, viewOverview, viewTools, viewServer, viewSettings, viewServerLogs, viewScripts, viewAiChat, viewCobaltLogs];
 
 function setSidebarMode(mode) {
     dashboardMode = mode;
@@ -128,7 +129,7 @@ function showView(name) {
         v.style.display = 'none';
         v.classList.remove('view--entering');
     });
-    const labels = {clients:'Clients',server:'Server','server-logs':'Logs',settings:'Settings',overview:'Overview',tools:'Tools',scripts:'Scripts','ai-chat':'AI Chat'};
+    const labels = {clients:'Clients',server:'Server','server-logs':'Logs',settings:'Settings',overview:'Overview',tools:'Tools',scripts:'Scripts','ai-chat':'AI Chat','cobalt-logs':'Cobalt Logs'};
     topbarSection.textContent = labels[name] || name;
 
     let targetView = null;
@@ -137,9 +138,9 @@ function showView(name) {
     else if (name === 'server-logs') { targetView = viewServerLogs; viewServerLogs.style.display = 'block'; fetchServerLogs(); }
     else if (name === 'settings') { targetView = viewSettings; viewSettings.style.display = 'block'; loadSettings(); }
     else if (name === 'overview') { targetView = viewOverview; viewOverview.style.display = 'block'; }
-    else if (name === 'tools') { 
+    else if (name === 'tools') {
         targetView = viewTools;
-        viewTools.style.display = 'block'; 
+        viewTools.style.display = 'block';
         if (!activeTool) selectTool('script-grep');
     }
     else if (name === 'scripts') {
@@ -152,6 +153,11 @@ function showView(name) {
         targetView = viewAiChat;
         viewAiChat.style.display = 'block';
         showChatView();
+    }
+    else if (name === 'cobalt-logs') {
+        targetView = viewCobaltLogs;
+        viewCobaltLogs.style.display = 'block';
+        showCobaltView();
     }
 
     // Only animate on actual navigation, not on re-entry to the same view
@@ -1567,6 +1573,8 @@ async function updateStatus() {
             renderOverviewClients();
         } else if (dashboardMode === 'home' && currentView === 'server-logs' && serverLogsLive) {
             fetchServerLogs();
+        } else if (dashboardMode === 'client' && currentView === 'cobalt-logs' && cobaltLogsLive) {
+            fetchCobaltLogs();
         } else if (dashboardMode === 'client' && selectedClientId) {
             updateOverview();
         }
@@ -1871,6 +1879,218 @@ async function sendChatMessage() {
 function showChatView() {
     renderChatMessages();
     checkChatConfig();
+}
+
+/* ── Cobalt Logs ─────────────────────────────────────────── */
+let cobaltLogs = [];
+let cobaltLogsLive = true;
+let cobaltFilterDirection = 'all';
+let cobaltFilterQuery = '';
+let cobaltSelectedLogId = null;
+let cobaltLastKey = '';
+
+const cobaltTableBody = $('cobaltTableBody');
+const cobaltSearch = $('cobaltSearch');
+const cobaltLiveBtn = $('cobaltLiveBtn');
+const cobaltClearBtn = $('cobaltClearBtn');
+const cobaltPanel = $('cobaltPanel');
+const cobaltPanelClose = $('cobaltPanelClose');
+const cobaltPanelTitle = $('cobaltPanelTitle');
+const cobaltPanelPath = $('cobaltPanelPath');
+const cobaltPanelCode = $('cobaltPanelCode');
+const cobaltPanelArgs = $('cobaltPanelArgs');
+const cobaltPanelDebugSection = $('cobaltPanelDebugSection');
+const cobaltPanelDebug = $('cobaltPanelDebug');
+const cobaltStatTotal = $('cobaltStatTotal');
+const cobaltStatIncoming = $('cobaltStatIncoming');
+const cobaltStatOutgoing = $('cobaltStatOutgoing');
+
+async function fetchCobaltLogs() {
+    try {
+        const params = new URLSearchParams({
+            limit: '200',
+            direction: cobaltFilterDirection === 'all' ? '' : cobaltFilterDirection,
+            filter: cobaltFilterQuery,
+        });
+        const res = await fetch('/api/cobalt/logs?' + params.toString());
+        const data = await res.json();
+        if (data.logs) {
+            cobaltLogs = data.logs;
+            updateCobaltStats(data.total || 0);
+            renderCobaltLogs();
+        }
+    } catch (e) {}
+}
+
+function updateCobaltStats(total) {
+    const incoming = cobaltLogs.filter(l => l.direction === 'incoming').length;
+    const outgoing = cobaltLogs.filter(l => l.direction === 'outgoing').length;
+    if (cobaltStatTotal) cobaltStatTotal.textContent = `${total} total`;
+    if (cobaltStatIncoming) cobaltStatIncoming.textContent = `${incoming} incoming`;
+    if (cobaltStatOutgoing) cobaltStatOutgoing.textContent = `${outgoing} outgoing`;
+}
+
+function formatCobaltArgs(args) {
+    if (!args || args.length === 0) return 'none';
+    const parts = args.map(a => {
+        if (a === null) return 'nil';
+        if (typeof a === 'boolean') return a ? 'true' : 'false';
+        if (typeof a === 'number') return String(a);
+        if (typeof a === 'string') return `"${a.slice(0, 20)}${a.length > 20 ? '...' : ''}"`;
+        if (typeof a === 'object') return '{...}';
+        return String(a);
+    });
+    return parts.join(', ');
+}
+
+function renderCobaltLogs() {
+    if (!cobaltTableBody) return;
+    if (cobaltLogs.length === 0) {
+        cobaltTableBody.innerHTML = '<div class="logs-empty">No remote spy logs yet. Install the Cobalt plugin to start intercepting.</div>';
+        return;
+    }
+
+    const wasAtBottom = cobaltTableBody.scrollHeight - cobaltTableBody.scrollTop - cobaltTableBody.clientHeight < 30;
+    const savedScroll = cobaltTableBody.scrollTop;
+
+    cobaltTableBody.innerHTML = cobaltLogs.map(log => {
+        const d = new Date(log.timestamp);
+        const time = formatTime(d);
+        const dirClass = log.direction === 'incoming' ? 'cobalt-dir-incoming' : 'cobalt-dir-outgoing';
+        const isSelected = log.id === cobaltSelectedLogId;
+        const rowClass = isSelected ? ' cobalt-row--selected' : '';
+        return `<div class="cobalt-row${rowClass}" data-id="${escapeHtml(log.id)}">
+            <div class="cobalt-col cobalt-col--time">${time}</div>
+            <div class="cobalt-col cobalt-col--dir"><span class="${dirClass}">${log.direction}</span></div>
+            <div class="cobalt-col cobalt-col--remote" title="${escapeHtml(log.remotePath)}">${escapeHtml(log.remoteName)}</div>
+            <div class="cobalt-col cobalt-col--args" title="${escapeHtml(formatCobaltArgs(log.args))}">${escapeHtml(formatCobaltArgs(log.args))}</div>
+            <div class="cobalt-col cobalt-col--actions">
+                <button class="cobalt-row-btn" data-action="copy-path" data-path="${escapeHtml(log.remotePath)}" title="Copy path">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+                <button class="cobalt-row-btn" data-action="copy-code" data-id="${escapeHtml(log.id)}" title="Copy generated code">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+
+    if (wasAtBottom) {
+        cobaltTableBody.scrollTop = cobaltTableBody.scrollHeight;
+    } else {
+        cobaltTableBody.scrollTop = savedScroll;
+    }
+}
+
+function showCobaltPanel(log) {
+    if (!log) return;
+    cobaltSelectedLogId = log.id;
+    if (cobaltPanelTitle) cobaltPanelTitle.textContent = log.remoteName;
+    if (cobaltPanelPath) cobaltPanelPath.textContent = log.remotePath;
+    if (cobaltPanelCode) cobaltPanelCode.textContent = log.generatedCode || 'No generated code available';
+    if (cobaltPanelArgs) cobaltPanelArgs.textContent = JSON.stringify(log.args, null, 2);
+    if (cobaltPanelDebugSection) cobaltPanelDebugSection.style.display = log.debugInfo ? '' : 'none';
+    if (cobaltPanelDebug) cobaltPanelDebug.textContent = log.debugInfo || '';
+    if (cobaltPanel) cobaltPanel.style.display = '';
+    renderCobaltLogs();
+}
+
+function hideCobaltPanel() {
+    cobaltSelectedLogId = null;
+    if (cobaltPanel) cobaltPanel.style.display = 'none';
+    renderCobaltLogs();
+}
+
+if (cobaltPanelClose) {
+    cobaltPanelClose.addEventListener('click', hideCobaltPanel);
+}
+
+if (cobaltTableBody) {
+    cobaltTableBody.addEventListener('click', (e) => {
+        const rowBtn = e.target.closest('.cobalt-row-btn');
+        if (rowBtn) {
+            e.stopPropagation();
+            const action = rowBtn.dataset.action;
+            if (action === 'copy-path') {
+                navigator.clipboard.writeText(rowBtn.dataset.path || '').then(() => {
+                    showToast('Remote path copied', 'success');
+                });
+            } else if (action === 'copy-code') {
+                const log = cobaltLogs.find(l => l.id === rowBtn.dataset.id);
+                if (log && log.generatedCode) {
+                    navigator.clipboard.writeText(log.generatedCode).then(() => {
+                        showToast('Generated code copied', 'success');
+                    });
+                } else {
+                    showToast('No generated code available', 'error');
+                }
+            }
+            return;
+        }
+        const row = e.target.closest('.cobalt-row');
+        if (row) {
+            const log = cobaltLogs.find(l => l.id === row.dataset.id);
+            if (log) showCobaltPanel(log);
+        }
+    });
+}
+
+if (cobaltSearch) {
+    cobaltSearch.addEventListener('input', (e) => {
+        cobaltFilterQuery = e.target.value.trim();
+        fetchCobaltLogs();
+    });
+}
+
+document.querySelectorAll('.cobalt-filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.cobalt-filter-tab').forEach(t => t.classList.remove('cobalt-filter-tab--active'));
+        tab.classList.add('cobalt-filter-tab--active');
+        cobaltFilterDirection = tab.dataset.filter || 'all';
+        fetchCobaltLogs();
+    });
+});
+
+if (cobaltLiveBtn) {
+    cobaltLiveBtn.addEventListener('click', () => {
+        cobaltLogsLive = !cobaltLogsLive;
+        cobaltLiveBtn.classList.toggle('logs-btn--live', cobaltLogsLive);
+    });
+}
+
+if (cobaltClearBtn) {
+    cobaltClearBtn.addEventListener('click', async () => {
+        await fetch('/api/cobalt/logs', { method: 'DELETE' });
+        cobaltLogs = [];
+        hideCobaltPanel();
+        renderCobaltLogs();
+        updateCobaltStats(0);
+        showToast('Cobalt logs cleared', 'info');
+    });
+}
+
+document.querySelectorAll('.cobalt-copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const targetId = btn.dataset.copyTarget;
+        const el = $(targetId);
+        if (!el) return;
+        const text = el.textContent || '';
+        try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = 'Copied!';
+            btn.classList.add('cobalt-copy-btn--copied');
+            setTimeout(() => {
+                btn.textContent = btn.dataset.copyTarget === 'cobaltPanelPath' ? 'Copy' : 'Copy ' + btn.dataset.copyTarget.replace('cobaltPanel', '');
+                btn.classList.remove('cobalt-copy-btn--copied');
+            }, 1500);
+        } catch (e) {
+            showToast('Failed to copy', 'error');
+        }
+    });
+});
+
+function showCobaltView() {
+    fetchCobaltLogs();
 }
 
 updateStatus();
